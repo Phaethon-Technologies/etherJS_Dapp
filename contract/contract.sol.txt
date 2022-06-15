@@ -1,0 +1,145 @@
+pragma solidity ^0.8.0;
+
+contract EvidenceManagement {
+
+event MemberAdded(address member, uint256 roleId);
+event MemberRemoved(address member, uint256 roleId);
+
+event GrandAccess(address newaddress);
+
+ struct Evidence {
+ uint256 ID;
+ address owner ;
+ string caseTitle;
+ string catogory;
+ string caseHandledBy;
+ string date;
+ string time;
+ string place;
+ string[] evidence;
+ }
+
+struct Role {
+        bool exists;
+        uint256 adminRoleId;
+        mapping (address => bool) members;
+    }
+mapping (uint256 => Role) internal roles;
+
+mapping ( uint256 => Evidence ) private evidences ;
+
+
+ modifier OnlyOwner ( uint256 ID) 
+    {
+        require (msg. sender == evidences [ID ]. owner ); 
+        _;
+    }
+
+
+ modifier EvidenceExists ( uint256 ID , bool mustExist )
+ {
+ bool exists = evidences [ID ]. ID != 0x0;
+ if ( mustExist )
+ require (ID != 0x0 && exists );
+ else
+ require (! exists );
+ _;
+ }
+
+uint256 public constant WHITELIST = 1;
+
+function isViwer(address _member)
+        public
+        view
+        returns(bool)
+    {
+        return roles[WHITELIST].members[_member];
+    }
+
+ function RemoveEvidence ( uint256 ID)
+    public OnlyOwner (ID) EvidenceExists (ID , true ) 
+    {
+        delete evidences [ID ];
+    }
+
+function addMember(address _member)
+        private
+    {
+        require(
+            !isViwer(_member),
+            "Address is member of role."
+        );
+
+        roles[WHITELIST].members[_member] = true;
+        emit MemberAdded(_member, WHITELIST);
+    }
+
+     function removeMember(address _member)
+        private
+    {
+        require(
+            isViwer(_member),
+            "Address is not member of role."
+        );
+
+        delete roles[WHITELIST].members[_member];
+        emit MemberRemoved(_member, WHITELIST);
+    }
+
+
+ function CreateEvidence ( uint256 ID , string memory _caseTitle, string memory _catogory, string memory _caseHandledBy,
+  string memory _date, string memory _time, string memory _place, string[] memory _evidence )
+    public EvidenceExists (ID , false ) 
+        {
+    evidences [ID ]. ID = ID;
+    evidences [ID ]. owner = msg. sender ;
+    evidences [ID].caseTitle = _caseTitle;
+    evidences [ID].catogory = _catogory;
+    evidences [ID].caseHandledBy = _caseHandledBy;
+    evidences [ID].date = _date;
+    evidences [ID].time = _time;
+    evidences [ID].place = _place;
+    evidences [ID].evidence = _evidence;
+ }
+
+ function grandAccess ( uint256 ID , address newaddress )
+    public OnlyOwner (ID) EvidenceExists (ID , true ) 
+        {
+     addMember(newaddress);
+     emit GrandAccess(newaddress);
+ }
+
+ function RemoveAccess(address owner, uint256 ID) 
+    public OnlyOwner(ID) EvidenceExists (ID , true ) 
+    {
+        removeMember(owner);
+    }
+
+
+ function GetEvidence ( uint256 ID)
+    view public returns ( 
+        address owner, 
+        string memory _caseTitle ,
+        uint256  _caseId ,
+        string memory _catogory, 
+        string memory _caseHandledBy,
+        string memory _date,
+        string memory _time, 
+        string memory _place, 
+        string[] memory _evidence) 
+    {
+        if(isViwer(msg.sender) || (msg. sender == evidences [ID ]. owner)){
+            Evidence memory getEvidence = evidences [ID];
+        return ( 
+                owner =getEvidence. owner ,
+                _caseTitle= getEvidence. caseTitle , 
+                _caseId=getEvidence. ID,
+                _catogory= getEvidence. catogory ,
+               _caseHandledBy= getEvidence. caseHandledBy , 
+               _date = getEvidence. date, 
+               _time = getEvidence. time, 
+               _place =getEvidence. place,
+                _evidence= getEvidence.evidence );
+        }
+    }
+}
